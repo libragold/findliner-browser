@@ -24,9 +24,8 @@
                 Your file is processed locally in your browser.<br>
                 No data is uploaded or stored on a server.
             </p>
-            <hr>
         </div>
-        <div>
+        <div id="fixed-controls">
             Exclude Content Within These Margins<br>
 
             <label for="marginLeft">Left</label>
@@ -40,23 +39,23 @@
 
             <label for="marginRight">Right</label>
             <input type="number" id="marginRight" value="80" min="0" />
-        </div>
-        <hr>
-        <div style="margin-block-end: 8px;">
-            Text<br>
-            <label for="textColor">Color</label>
-            <select id="textColor">
-                <option value="#c1121f">Strong Red</option>
-                <option value="#023e8a">Dark Blue</option>
-            </select>
-
-            <label for="textOffset">Offset</label>
-            <input type="number" id="textOffset" value="35" min="0" />
-        </div>
-
-        <div id="downloadButtonDiv">
-            <button id="updateButton" disabled>Update</button>
-            <button id="downloadButton" disabled>Download</button>
+            <hr>
+            <div style="margin-block-end: 8px;">
+                Text<br>
+                <label for="textColor">Color</label>
+                <select id="textColor">
+                    <option value="#c1121f">Strong Red</option>
+                    <option value="#023e8a">Dark Blue</option>
+                </select>
+    
+                <label for="textOffset">Offset</label>
+                <input type="number" id="textOffset" value="35" min="0" />
+            </div>
+    
+            <div id="downloadButtonDiv">
+                <button id="updateButton" disabled>Update</button>
+                <button id="downloadButton" disabled>Download</button>
+            </div>
         </div>
     </header>
     <main id="pdfCanvases"></main>
@@ -65,7 +64,7 @@
         <p>Proudly designed and built with all the love in the world by <a href="https://www.zilin.one">Zilin</a>.</p>
     </footer>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

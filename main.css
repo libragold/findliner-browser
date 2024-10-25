@@ -3,7 +3,7 @@
 }
 body {
     background-color: #666;
-    margin: 20px 0;
+    margin: 0;
     line-height: 30px;
     font-family: Verdana, sans-serif;
 }
@@ -11,10 +11,16 @@ header {
     width: 600px;
     margin: 0 auto;
     text-align: center;
+}
+header > div {
     background-color: white;
     border-radius: 22px;
-    margin-block-end: 20px;
     border: 1px solid #666;
+    margin-block: 20px;
+}
+header > #fixed-controls {
+    padding-block-start: 20px;
+    margin-block: 0;
 }
 header h1 {
     font-family: Spinnaker, sans-serif;
@@ -98,7 +104,6 @@ header.fixed {
     position: fixed;
     top: 20px;
     z-index: 1000; /* Ensure it stays above other elements */
-    padding-block-start: 20px;
     left: 50%; /* Position from the center of the screen */
     transform: translateX(-50%); /* Offset the header by half its width to center it */
 }
@@ -107,7 +112,7 @@ header.fixed #collapsable {
 }
 /* Add space at the top of the page when the header is fixed */
 body.fixed-header {
-    padding-top: 650.656px; /* Adjust based on the header height */
+    padding-top: 702.656px; /* Adjust based on the header height */
 }
 footer {
     text-align: center;
@@ -121,4 +126,13 @@ footer a {
     text-decoration-color: #fde995;
     text-underline-offset: 3px;
     text-decoration-thickness: 3px;
+}
+/* Media query for screen sizes 799px and smaller */
+@media (max-width: 799px) {
+    body {
+        margin: 10px;
+    }
+    header {
+        width: 100%;
+    }
 }

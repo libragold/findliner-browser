@@ -3,12 +3,14 @@ const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const downloadButton = document.getElementById('downloadButton');
 const pdfScale = 2.0;  // You can adjust the scale for higher resolution
+const fontSize = 12;
 
 const state = {
     allCanvases: [],
     originalFileName: '',
     fileUploaded: false,
-    currentFile: null
+    currentFile: null,
+    averages: []
 };
 
 let changeTimeout; // To store the timeout ID
@@ -47,7 +49,7 @@ function loadSavedValues() {
     const marginBottom = localStorage.getItem('marginBottom') || '60';
     const marginLeft = localStorage.getItem('marginLeft') || '60';
     const textColor = localStorage.getItem('textColor') || '#c1121f';  // Default to Strong Red
-    const textOffset = localStorage.getItem('textOffset') || '35';
+    const textOffset = localStorage.getItem('textOffset') || '60';
 
     // Set the input values based on the saved values
     document.getElementById('marginTop').value = marginTop;
@@ -253,7 +255,6 @@ function processRowSums(rowSums) {
         // Step 4: Set k = j and continue the loop
         k = j + 1;
     }
-
     return results;  // Return the array of averages
 }
 
@@ -328,6 +329,7 @@ function processCanvases(originalCanvas, overlayCanvas, marginCanvas, pageNumber
 
     drawNormalizedRowSums(overlayCanvas, normalizedRowSums);
     const averages = processRowSums(rowSums);
+    state.averages[pageNumber - 1] = averages;
     drawTextFromAverages(originalCanvas, averages, pageNumber);
 
     drawMargins(marginCanvas);
@@ -358,22 +360,19 @@ function drawTextFromAverages(overlayCanvas, averages, pageNumber) {
     const canvasWidth = overlayCanvas.width;
     
     // Get the text offset and color from inputs
-    const textOffset = parseInt(document.getElementById('textOffset').value) || 35;
+    const textOffset = parseInt(document.getElementById('textOffset').value);
     const textColor = document.getElementById('textColor').value;
     
-    context.font = '12px Courier';  // Set the font size and family
-    context.textAlign = 'right';  // Align text to the right (horizontally)
+    context.font = fontSize+'px Courier';  // Set the font size and family
     context.textBaseline = 'middle';  // Vertically align text to the middle
     context.fillStyle = textColor;  // Set the chosen text color
 
+    // Calculate the x position
+    const x = canvasWidth - textOffset;
+    
     averages.forEach((average, index) => {
         const y = average;  // The y position from the top
         const text = `${pageNumber}.${index + 1}`;  // Format the text as "p.q", where p is the page number
-
-        // Calculate the x position, 60 pixels from the right edge
-        const x = canvasWidth - textOffset;
-
-        // Draw the text (p.q) at position (x, y)
         context.fillText(text, x, y);
     });
 }
@@ -422,63 +421,91 @@ function drawMargins(marginCanvas) {
     context.setLineDash([]);
 }
 
+// Helper function to convert hex color to rgb
+function hexToRgb(hex) {
+    // Remove the leading '#' if present
+    hex = hex.replace(/^#/, '');
+
+    // Convert the shorthand hex (e.g., #03F) to full hex (e.g., #0033FF)
+    if (hex.length === 3) {
+        hex = hex.split('').map(x => x + x).join('');
+    }
+
+    const bigint = parseInt(hex, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+
+    return [r / 255, g / 255, b / 255];  // Return values as fractions between 0 and 1
+}
+
 // PDF Generation Function
 
-function downloadMultiPagePDF(canvases) {
-    const { jsPDF } = window.jspdf;
-
+async function downloadMultiPagePDF() {
     // Disable the download button while generating the PDF
     disableButton('downloadButton');
     document.getElementById('downloadButton').innerText = 'Downloading...';  // Optional: Update the button text
 
-    setTimeout(() => {  // Use a timeout to allow UI updates
-        // Initialize the jsPDF instance without specifying a fixed page size
-        let pdf = null;
+    // Load the existing PDF from the state
+    const existingPdfBytes = await state.currentFile.arrayBuffer();
+    const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
 
-        canvases.forEach((canvas, index) => {
-            const imgData = canvas.toDataURL('image/png');
-            
-            // Get the canvas width and height in pixels
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
+    // Iterate through the pages of the PDF
+    const totalPages = pdfDoc.getPageCount();
 
-            // Convert canvas dimensions from pixels to points (1 point = 1/72 inch)
-            const pageWidth = canvasWidth * 0.264583 * pdfScale;
-            const pageHeight = canvasHeight * 0.264583 * pdfScale;
+    // Get the text offset and color from inputs
+    const textOffset = parseInt(document.getElementById('textOffset').value);
+    const hexColor = document.getElementById('textColor').value;
+    const [r, g, b] = hexToRgb(hexColor);  // Convert hex to rgb using the helper function
+    const textColor = PDFLib.rgb(r, g, b);  // Pass the converted RGB values to pdf-lib's rgb()
+    const courierFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Courier);
+    
+    for (let i = 0; i < totalPages; i++) {
+        const page = pdfDoc.getPage(i);
 
-            // Create or add a new page to the PDF using canvas dimensions
-            if (index === 0) {
-                // Initialize jsPDF with the size of the first canvas
-                pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'pt',  // Using points to match canvas dimensions
-                    format: [pageWidth, pageHeight]  // Set PDF page size to match canvas size
-                });
-            } else {
-                // For subsequent pages, add a new page with the same dimensions
-                pdf.addPage([pageWidth, pageHeight]);
-            }
+        page.setFontSize(fontSize / pdfScale);
+        page.setFontColor(textColor);
+        page.setFont(courierFont);
 
-            // Add the canvas image to the PDF
-            pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight);
-        });
+        // Get the page dimensions
+        const { width: pageWidth, height: pageHeight } = page.getSize();
 
-        // Get the current date in YYYYMMDD format
-        const currentDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        // Iterate through the entries in state.averages[i]
+        const averages = state.averages[i] || [];
 
-        // Create the final filename with original filename + date
-        const finalFilename = `${state.originalFileName}-${currentDate}.pdf`;
+        for (let j = 0; j < averages.length; j++) {
+            const y = pageHeight - averages[j] / pdfScale - 2;  // Get the y position from state.averages[i]
+            const text = `${i + 1}.${j + 1}`;  // The text to draw, i.j
 
-        // Trigger the download of the PDF
-        if (pdf) {
-            pdf.save(finalFilename);
+            // Calculate the x position
+            const x = pageWidth - textOffset / pdfScale;
+
+            // Draw the text on the page
+            page.drawText(text, { x: x, y: y });
         }
+    }
 
-        // Re-enable the download button and reset the button text
-        enableButton('downloadButton');
-        document.getElementById('downloadButton').innerText = 'Download';  // Reset button text
+    // Serialize the PDF document to bytes
+    const pdfBytes = await pdfDoc.save();
 
-    }, 500);  // A small delay to allow UI to update before processing
+    // Create a Blob to trigger the download of the modified PDF
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+    // Get the current date in YYYYMMDD format
+    const currentDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+    // Create the final filename with original filename + date
+    const finalFilename = `${state.originalFileName}-${currentDate}.pdf`;
+
+    // Trigger the download of the modified PDF
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = finalFilename;
+    link.click();
+
+    // Re-enable the download button and reset the button text
+    enableButton('downloadButton');
+    document.getElementById('downloadButton').innerText = 'Download';  // Reset button text
 }
 
 // Scroll Event Handler
@@ -488,7 +515,7 @@ function toggleFixedHeader() {
     const header = document.getElementById('mainHeader');
 
     // Check if the scroll position is beyond 100px
-    if (window.scrollY > 342) {
+    if (window.scrollY > 374) {
         header.classList.add('fixed');
         document.body.classList.add('fixed-header');
     } else {
